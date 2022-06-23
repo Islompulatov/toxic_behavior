@@ -4,7 +4,7 @@ import re
 import string
 import spacy
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 from torchtext.vocab import Vocab, FastText
 
@@ -43,7 +43,7 @@ def  clean_text(text):
     return text
 
 def train_test_split(filename: str, train_size=0.8):
-    df=pd.read_csv(filename, index_col='id')
+    df=pd.read_csv(filename, index_col='id', nrows=100)
     df['comment_text'] = df['comment_text'].apply(lambda x:clean_text(x))
     df_idx = [i for i in range(len(df))]
     np.random.shuffle(df_idx)
@@ -92,7 +92,7 @@ class TrainData(Dataset):
         self.vec.vectors[1] = -torch.ones(self.vec.vectors[1].shape[0]) # replacing the vector associated with 1 (padded value) to become a vector of -1.
         self.vec.vectors[0] = torch.zeros(self.vec.vectors[0].shape[0]) # replacing the vector associated with 0 (unknown) to become zeros
         self.vectorizer = lambda x: self.vec.vectors[x]
-        self.labels = df.iloc[1,-1]
+        self.labels = df.drop(columns='comment_text').values
         sequences = [padding(encoder(preprocessing(sequence), self.vec), max_seq_len) for sequence in df['comment_text'].tolist()]
         self.sequences = sequences
     
@@ -105,12 +105,22 @@ class TrainData(Dataset):
 
 
 
-def collate_train(batch, vectorizer):
+train_df, test_df = train_test_split('jigsaw-toxic-comment-classification-challenge/train.csv/train.csv')
+train_df, test_df = TrainData(train_df), TrainData(test_df)
+
+def collate_train(batch, vectorizer=train_df.vectorizer):
     inputs = torch.stack([torch.stack([vectorizer(token) for token in sentence[0]]) for sentence in batch])
     target = torch.LongTensor([item[1] for item in batch])
     return inputs, target
 
-def collate_test(batch, vectorizer):
+def collate_test(batch, vectorizer=test_df.vectorizer):
     inputs = torch.stack([torch.stack([vectorizer(token) for token in sentence[0]]) for sentence in batch])
     target = torch.LongTensor([item[1] for item in batch])
     return inputs, target
+
+
+train_loader = DataLoader(train_df, batch_size=32, collate_fn=collate_train, shuffle=True)
+test_loader = DataLoader(test_df, batch_size=32, collate_fn=collate_test)
+
+
+print(next(iter(train_loader)))
