@@ -91,7 +91,7 @@ def  clean_text(text):
     text = re.sub(r"n'", "ng", text)
     text = re.sub(r"'bout", "about", text)
     text = re.sub(r"'til", "until", text)
-    text = re.sub(r"[-()"#\@;:<>{}`+=~|.!?,]"", "", text)
+    # text = re.sub(r"[-()"#\@;:<>{}`+=~|.!?,]"", "", text)
     text = text.translate(str.maketrans('', '', string.punctuation)) 
     text = re.sub("(\W)"," ",text) 
     text = re.sub('\S\d\S\s*','', text)
@@ -108,28 +108,30 @@ print(df)
 
 '''Resume from here'''
 
-# class DataClass(Dataset):
-#     def __init__(self, df, max_seq_len=32):
-#         self.max_seq_len = max_seq_len
+class DataClass(Dataset):
+    def __init__(self, df, max_seq_len=32):
+        self.max_seq_len = max_seq_len
 
-#         train_iter = iter(df.review.values)
-#         self.vec = FastText("simple")
-#         # replacing the vector associated with 1 (padded value) to become a vector of -1.
-#         self.vec.vectors[1] = -torch.ones(self.vec.vectors[1].shape[0])
-#         # replacing the vector associated with 0 (unknown) to become zeros
-#         self.vec.vectors[0] = torch.zeros(self.vec.vectors[0].shape[0])
-#         self.vectorizer = lambda x: self.vec.vectors[x]
-#         self.labels = df.star
-#         sequences = [padding(encoder(preprocessing(
-#             sequence), self.vec), max_seq_len) for sequence in df.review.tolist()]
-#         self.sequences = sequences
+        train_iter = iter(df.comment_text.values)
+        self.vec = FastText("simple")
+        # replacing the vector associated with 1 (padded value) to become a vector of -1.
+        self.vec.vectors[1] = -torch.ones(self.vec.vectors[1].shape[0])
+        # replacing the vector associated with 0 (unknown) to become zeros
+        self.vec.vectors[0] = torch.zeros(self.vec.vectors[0].shape[0])
+        self.vectorizer = lambda x: self.vec.vectors[x]
+        
+        sequences = [padding(encoder(preprocessing(
+            sequence), self.vec), max_seq_len) for sequence in df.comment_text.tolist()]
+        self.sequences = sequences
 
-#     def __len__(self):
-#         return len(self.sequences)
+        self.labels = df.drop(columns='comment_text').values        # target
+        
+    def __len__(self):
+        return len(self.sequences)
 
-#     def __getitem__(self, i):
-#         assert len(self.sequences[i]) == self.max_seq_len
-#         return self.sequences[i], self.labels[i]
+    def __getitem__(self, i):
+        assert len(self.sequences[i]) == self.max_seq_len
+        return self.sequences[i], self.labels[i]
 
 
 # # IMPLIMENTING ABOVE FUNCTIONS
