@@ -43,7 +43,7 @@ def  clean_text(text):
     return text
 
 def train_test_split(filename: str, train_size=0.8):
-    df=pd.read_csv(filename, index_col='id', nrows=100)
+    df=pd.read_csv(filename, index_col='id', nrows= 1000)        # we set as limit 100 rows
     df['comment_text'] = df['comment_text'].apply(lambda x:clean_text(x))
     df_idx = [i for i in range(len(df))]
     np.random.shuffle(df_idx)
