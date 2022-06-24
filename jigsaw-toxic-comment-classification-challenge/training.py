@@ -1,10 +1,92 @@
-from data_loader import TrainData, train_test_split, collate_test, collate_train
-from torch.utils.data import DataLoader
+# from data_loader import TrainData, train_test_split, collate_test, collate_train
+# from torch.utils.data import DataLoader
 
 
 
-train_df, test_df = train_test_split(r'C:\Users\KINGSLEY\OneDrive\Documents\GitHub\toxic_behavior\jigsaw-toxic-comment-classification-challenge\train.csv\train.csv')
-train_df, test_df = TrainData(train_df), TrainData(test_df)
+# train_df, test_df = train_test_split(r'jigsaw-toxic-comment-classification-challenge/train.csv/train.csv')
+# train_df, test_df = TrainData(train_df), TrainData(test_df)
 
-train_loader = DataLoader(train_df, batch_size=32, collate_fn=collate_train(vectorizer=train_df.vectorizer), shuffle=True)
-test_loader = DataLoader(test_df, batch_size=32, collate_fn=collate_test(vectorizer=test_df.vectorizer))
+# train_loader = DataLoader(train_df, batch_size=32, collate_fn=collate_train(batch=train_df, vectorizer=train_df.vectorizer),  shuffle=True)
+# test_loader = DataLoader(test_df, batch_size=32, collate_fn=collate_test(batch=test_df, vectorizer=test_df.vectorizer))
+
+# print(next(iter(train_loader)))
+import torch
+import matplotlib.pyplot as plt
+from torch import nn
+import torch.nn.functional as F
+from torch import optim
+# import sys
+# sys.path.insert(0, 'C:/Users/asus/Documents/GitHub/toxic_behavior/model1.py')
+from model1 import Classifier
+
+from data_loader import test_loader, train_loader
+
+
+MAX_SEQ_LEN = 32
+model = Classifier(MAX_SEQ_LEN, 300, 16, 16)
+
+criterion = nn.MultiLabelSoftMarginLoss()
+
+# Only train the classifier parameters, feature parameters are frozen
+optimizer = optim.Adam(model.parameters(), lr=0.003)        
+
+
+emb_dim = 300
+epochs = 10
+print_every = 40
+train_losses, test_losses, accuracies = [], [], []
+
+for e in range(epochs):
+    running_loss, running_test_losses, running_test_accuracy = 0, 0, 0
+    # print(f"Epoch: {e+1}/{epochs}")
+
+    for i, (sentences, labels) in enumerate(iter(train_loader)):
+
+        sentences.resize_(sentences.size()[0], 32* emb_dim)
+        
+        optimizer.zero_grad()
+        
+        output = model.forward(sentences)   # 1) Forward pass
+        train_loss = criterion(output, labels) # 2) Compute loss
+        train_loss.backward()                  # 3) Backward pass
+        optimizer.step()                 # 4) Update model
+        
+        running_loss += train_loss.item()
+        
+        # if i % print_every == 0:
+        #     print(f"\tIteration: {i}\t Loss: {running_loss/print_every:.4f}")
+        #     running_loss = 0
+    avg_running_loss = running_loss/len(train_loader)
+    train_losses.append(avg_running_loss)
+    corrects = 0
+    total = 0
+    model.eval()
+    with torch.no_grad():
+        for i, (sentences_test, labels_test) in enumerate(iter(test_loader)):
+            sentences_test.resize_(sentences_test.size()[0], 32* emb_dim)
+
+            output_test = model.forward(sentences_test)
+            test_loss = criterion(output_test, labels_test)
+
+            running_test_losses += test_loss.item()
+
+            prediction_label = torch.argmax(output_test, dim=1)
+            total += labels_test.size(0)
+
+            corrects += (prediction_label==labels_test).sum().item()
+        running_test_accuracy += corrects*100/total    
+        avg_test_loss = running_test_losses/len(test_loader)
+        test_losses.append(avg_test_loss)
+        avg_running_accuracy = running_test_accuracy/len(test_loader)
+        accuracies.append(avg_running_accuracy)
+
+    model.train()
+
+    print(f"Epoch: {e+1}/{epochs}, Train loss: {avg_running_loss:.4f}, Test loss: {avg_test_loss:.4f}, Accuracy: {avg_running_accuracy:.4f}" )
+
+torch.save({'model_state': model.state_dict()}, 'final_model')
+plt.plot(train_losses, label='Train loss')
+plt.plot(test_losses, label='Test losses')
+plt.plot(accuracies, label='Accuracy')
+plt.legend()
+plt.show()
