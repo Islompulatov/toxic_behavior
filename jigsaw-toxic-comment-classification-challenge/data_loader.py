@@ -110,12 +110,12 @@ train_df, test_df = TrainData(train_df), TrainData(test_df)
 
 def collate_train(batch, vectorizer=train_df.vectorizer):
     inputs = torch.stack([torch.stack([vectorizer(token) for token in sentence[0]]) for sentence in batch])
-    target = torch.LongTensor([item[1] for item in batch])
+    target = torch.LongTensor(np.array([item[1] for item in batch]))
     return inputs, target
 
 def collate_test(batch, vectorizer=test_df.vectorizer):
     inputs = torch.stack([torch.stack([vectorizer(token) for token in sentence[0]]) for sentence in batch])
-    target = torch.LongTensor([item[1] for item in batch])
+    target = torch.LongTensor(np.array([item[1] for item in batch]))
     return inputs, target
 
 
@@ -123,4 +123,4 @@ train_loader = DataLoader(train_df, batch_size=32, collate_fn=collate_train, shu
 test_loader = DataLoader(test_df, batch_size=32, collate_fn=collate_test)
 
 
-print(next(iter(train_loader)))
+# print(next(iter(train_loader)))

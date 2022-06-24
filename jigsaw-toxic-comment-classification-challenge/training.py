@@ -25,7 +25,7 @@ from data_loader import test_loader, train_loader
 MAX_SEQ_LEN = 32
 model = Classifier(MAX_SEQ_LEN, 300, 16, 16)
 
-criterion = nn.MultiLabelSoftMarginLoss()
+criterion = nn.BCEWithLogitsLoss()
 
 # Only train the classifier parameters, feature parameters are frozen
 optimizer = optim.Adam(model.parameters(), lr=0.003)        
@@ -33,7 +33,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.003)
 
 emb_dim = 300
 epochs = 10
-print_every = 40
+# print_every = 40
 train_losses, test_losses, accuracies = [], [], []
 
 for e in range(epochs):
@@ -47,7 +47,7 @@ for e in range(epochs):
         optimizer.zero_grad()
         
         output = model.forward(sentences)   # 1) Forward pass
-        train_loss = criterion(output, labels) # 2) Compute loss
+        train_loss = criterion(output, labels.float()) # 2) Compute loss
         train_loss.backward()                  # 3) Backward pass
         optimizer.step()                 # 4) Update model
         
@@ -66,15 +66,15 @@ for e in range(epochs):
             sentences_test.resize_(sentences_test.size()[0], 32* emb_dim)
 
             output_test = model.forward(sentences_test)
-            test_loss = criterion(output_test, labels_test)
+            test_loss = criterion(output_test, labels_test.float())
 
             running_test_losses += test_loss.item()
 
             prediction_label = torch.argmax(output_test, dim=1)
             total += labels_test.size(0)
 
-            corrects += (prediction_label==labels_test).sum().item()
-        running_test_accuracy += corrects*100/total    
+            running_test_accuracy += torch.sum(prediction_label==labels_test) / len(labels_test)        # need to fix this line
+        # running_test_accuracy += corrects*100/total    
         avg_test_loss = running_test_losses/len(test_loader)
         test_losses.append(avg_test_loss)
         avg_running_accuracy = running_test_accuracy/len(test_loader)
