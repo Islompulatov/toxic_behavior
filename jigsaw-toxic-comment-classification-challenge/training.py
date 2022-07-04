@@ -35,7 +35,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.003)
 
 
 emb_dim = 300
-epochs = 5
+epochs = 10
 # print_every = 40
 train_losses, test_losses, accuracies = [], [], []
 
